@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tengervízszint hullámzás szimulátor</title>
+  <meta name="description" content="Szép, reszponzív tengervízszint hullámzás szimulátor, egyetlen HTML fájlban, GitHub Pages-hez." />
+  <style>
+    :root{
+      --bg0:#05070c;
+      --bg1:#070c18;
+      --panel:rgba(18, 24, 38, .62);
+      --panel2:rgba(18, 24, 38, .42);
+      --stroke:rgba(255,255,255,.10);
+      --text:rgba(255,255,255,.88);
+      --muted:rgba(255,255,255,.62);
+      --accent:rgba(122, 201, 255, .95);
+      --accent2:rgba(86, 255, 224, .85);
+      --warn:rgba(255, 214, 102, .92);
+      --danger:rgba(255, 110, 110, .92);
+      --radius:18px;
+      --shadow: 0 18px 45px rgba(0,0,0,.35);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(1200px 900px at 18% 22%, rgba(45, 133, 255,.22), transparent 60%),
+        radial-gradient(900px 700px at 82% 28%, rgba(86, 255, 224,.14), transparent 55%),
+        radial-gradient(900px 900px at 60% 95%, rgba(34, 82, 255,.12), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow:hidden;
+    }
+
+    .wrap{
+      position:relative;
+      height:100%;
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    @media (max-width: 980px){
+      .wrap{
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+    }
+
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+
+    .left{
+      padding: 16px 16px 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 10px 2px;
+    }
+    .logo{
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background:
+        radial-gradient(circle at 35% 30%, rgba(122,201,255,.9), transparent 60%),
+        radial-gradient(circle at 70% 70%, rgba(86,255,224,.75), transparent 60%),
+        linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      position:relative;
+      overflow:hidden;
+    }
+    .logo::after{
+      content:"";
+      position:absolute;
+      inset:-60% -40%;
+      background: radial-gradient(circle, rgba(255,255,255,.18), transparent 55%);
+      transform: rotate(20deg);
+      animation: shimmer 7.5s linear infinite;
+      opacity:.8;
+    }
+    @keyframes shimmer{
+      0%{ transform: translateX(-30%) rotate(20deg); }
+      100%{ transform: translateX(30%) rotate(20deg); }
+    }
+
+    h1{
+      font-size: 16px;
+      line-height: 1.1;
+      margin:0;
+      letter-spacing: .2px;
+    }
+    .sub{
+      margin:2px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    .controls{
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border: 1px solid var(--stroke);
+      border-radius: calc(var(--radius) - 6px);
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 120px;
+      gap: 10px;
+      align-items:center;
+    }
+
+    label{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .val{
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: rgba(255,255,255,.78);
+      text-align:right;
+      padding-top: 18px;
+    }
+
+    input[type="range"]{
+      width:100%;
+      accent-color: rgba(122,201,255,.95);
+    }
+
+    .toggles{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn{
+      appearance:none;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.86);
+      border-radius: 12px;
+      padding: 10px 10px;
+      cursor:pointer;
+      font-size: 12px;
+      transition: transform .08s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+      user-select:none;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.18);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn:hover{
+      background: rgba(255,255,255,.07);
+      border-color: rgba(255,255,255,.16);
+    }
+    .btn.primary{
+      background: rgba(122,201,255,.12);
+      border-color: rgba(122,201,255,.26);
+    }
+    .btn.primary:hover{
+      background: rgba(122,201,255,.16);
+      border-color: rgba(122,201,255,.34);
+    }
+    .btn.warn{
+      background: rgba(255,214,102,.10);
+      border-color: rgba(255,214,102,.22);
+    }
+    .btn.danger{
+      background: rgba(255,110,110,.10);
+      border-color: rgba(255,110,110,.22);
+    }
+
+    .hint{
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(255,255,255,.62);
+      padding: 2px 10px 0;
+    }
+
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: rgba(255,255,255,.78);
+      display:inline-block;
+      margin: 0 3px;
+      transform: translateY(-1px);
+    }
+
+    .right{
+      position:relative;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .canvasWrap{
+      position:relative;
+      flex:1;
+      overflow:hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--stroke);
+      background:
+        radial-gradient(1200px 900px at 50% 10%, rgba(122,201,255,.10), transparent 60%),
+        radial-gradient(900px 700px at 20% 80%, rgba(86,255,224,.08), transparent 60%),
+        linear-gradient(180deg, rgba(8, 12, 22, .85), rgba(5, 7, 12, .92));
+      box-shadow: var(--shadow);
+    }
+
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    .hud{
+      position:absolute;
+      left: 14px;
+      top: 14px;
+      right: 14px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+      pointer-events:none;
+    }
+    .chip{
+      pointer-events:none;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 10px 28px rgba(0,0,0,.18);
+      max-width: 520px;
+    }
+    .chip b{
+      font-size: 12px;
+      color: rgba(255,255,255,.88);
+      display:block;
+      margin-bottom: 2px;
+      letter-spacing: .2px;
+    }
+    .chip span{
+      font-size: 12px;
+      color: rgba(255,255,255,.62);
+      line-height:1.35;
+    }
+
+    .stats{
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      color: rgba(255,255,255,.72);
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .footerNote{
+      position:absolute;
+      left: 14px;
+      bottom: 12px;
+      right: 14px;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      pointer-events:none;
+      color: rgba(255,255,255,.55);
+      font-size: 12px;
+    }
+
+    .toast{
+      position:absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.34);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,.78);
+      box-shadow: 0 12px 30px rgba(0,0,0,.22);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(-2px);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="panel left">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Tengervízszint hullámzás szimulátor</h1>
+          <p class="sub">Interaktív, reszponzív, GitHub Pages kompatibilis, egyetlen fájl</p>
+        </div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Beállítások">
+        <div class="row">
+          <label>
+            Hullám magasság
+            <input id="amp" type="range" min="2" max="80" value="26" step="1" />
+          </label>
+          <div class="val" id="ampVal">26 px</div>
+        </div>
+
+        <div class="row">
+          <label>
+            Hullám sűrűség
+            <input id="freq" type="range" min="0.6" max="4.0" value="1.55" step="0.05" />
+          </label>
+          <div class="val" id="freqVal">1.55x</div>
+        </div>
+
+        <div class="row">
+          <label>
+            Sebesség
+            <input id="speed" type="range" min="0.2" max="2.6" value="1.05" step="0.05" />
+          </label>
+          <div class="val" id="speedVal">1.05x</div>
+        </div>
+
+        <div class="row">
+          <label>
+            Tengerszint
+            <input id="level" type="range" min="0.15" max="0.85" value="0.56" step="0.01" />
+          </label>
+          <div class="val" id="levelVal">56%</div>
+        </div>
+
+        <div class="row">
+          <label>
+            Szél, turbulencia
+            <input id="chop" type="range" min="0.0" max="1.0" value="0.35" step="0.01" />
+          </label>
+          <div class="val" id="chopVal">0.35</div>
+        </div>
+
+        <div class="toggles">
+          <button id="btnPause" class="btn primary" type="button" title="Space">
+            <span aria-hidden="true">⏯</span> Szünet
+          </button>
+          <button id="btnStorm" class="btn warn" type="button" title="S">
+            <span aria-hidden="true">🌬️</span> Vihar mód
+          </button>
+          <button id="btnReset" class="btn" type="button" title="R">
+            <span aria-hidden="true">↺</span> Reset
+          </button>
+          <button id="btnScreenshot" class="btn" type="button" title="P">
+            <span aria-hidden="true">📸</span> Kép mentés
+          </button>
+        </div>
+
+        <div class="hint">
+          Tippek: <span class="kbd">Space</span> szünet, <span class="kbd">S</span> vihar,
+          <span class="kbd">R</span> reset, <span class="kbd">P</span> kép mentés.
+          Egérrel vagy touch-al tudsz "hullámot dobni" a vízbe.
+        </div>
+      </div>
+
+      <div class="hint" style="padding: 2px 10px 4px;">
+        Ha GitHub Pages-re teszed, elég ezt az egy fájlt commitolni index.html néven.
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="canvasWrap">
+        <canvas id="c"></canvas>
+
+        <div class="hud">
+          <div class="chip">
+            <b>Víz felület</b>
+            <span>Rétegezett hullámok, finom hab, fénycsíkok, és kis részecskék. Kattints vagy húzd az egeret a felszínen.</span>
+          </div>
+          <div class="chip stats" id="stats">
+            FPS: <span id="fps">0</span><br/>
+            Méret: <span id="dim">0×0</span><br/>
+            Állapot: <span id="state">fut</span>
+          </div>
+        </div>
+
+        <div class="footerNote">
+          <div>Szép dizájn, natív Canvas, külső library nélkül</div>
+          <div id="qualityNote">Minőség: auto</div>
+        </div>
+
+        <div class="toast" id="toast">Mentve</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("c");
+      const ctx = canvas.getContext("2d", { alpha: true });
+
+      const ui = {
+        amp: document.getElementById("amp"),
+        freq: document.getElementById("freq"),
+        speed: document.getElementById("speed"),
+        level: document.getElementById("level"),
+        chop: document.getElementById("chop"),
+
+        ampVal: document.getElementById("ampVal"),
+        freqVal: document.getElementById("freqVal"),
+        speedVal: document.getElementById("speedVal"),
+        levelVal: document.getElementById("levelVal"),
+        chopVal: document.getElementById("chopVal"),
+
+        btnPause: document.getElementById("btnPause"),
+        btnStorm: document.getElementById("btnStorm"),
+        btnReset: document.getElementById("btnReset"),
+        btnScreenshot: document.getElementById("btnScreenshot"),
+
+        fps: document.getElementById("fps"),
+        dim: document.getElementById("dim"),
+        state: document.getElementById("state"),
+        toast: document.getElementById("toast"),
+        qualityNote: document.getElementById("qualityNote"),
+      };
+
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      // DPI skálázás, auto minőség, hogy mobilon is smooth legyen
+      let dpr = 1;
+      let W = 0, H = 0;
+      let qualityScale = 1;
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const targetW = Math.max(320, Math.floor(rect.width));
+        const targetH = Math.max(320, Math.floor(rect.height));
+
+        const rawDpr = window.devicePixelRatio || 1;
+
+        // Auto quality: ha túl nagy felület, visszaveszünk
+        const px = targetW * targetH * rawDpr * rawDpr;
+        if (px > 3.6e6) qualityScale = 0.75;
+        else if (px > 2.4e6) qualityScale = 0.85;
+        else qualityScale = 1;
+
+        dpr = rawDpr * qualityScale;
+
+        W = Math.floor(targetW * dpr);
+        H = Math.floor(targetH * dpr);
+
+        canvas.width = W;
+        canvas.height = H;
+
+        ui.dim.textContent = `${targetW}×${targetH}`;
+        ui.qualityNote.textContent = `Minőség: ${qualityScale === 1 ? "auto" : (qualityScale * 100).toFixed(0) + "%"}`;
+      }
+
+      window.addEventListener("resize", resize, { passive: true });
+      resize();
+
+      // Paraméterek
+      const state = {
+        paused: false,
+        storm: false,
+        t: 0,
+        // ripple mező
+        cols: 0,
+        rows: 0,
+        z1: null,
+        z2: null,
+        damping: 0.985,
+        lastPointer: null,
+        pointerDown: false,
+      };
+
+      function setVals() {
+        ui.ampVal.textContent = `${Number(ui.amp.value).toFixed(0)} px`;
+        ui.freqVal.textContent = `${Number(ui.freq.value).toFixed(2)}x`;
+        ui.speedVal.textContent = `${Number(ui.speed.value).toFixed(2)}x`;
+        ui.levelVal.textContent = `${Math.round(Number(ui.level.value) * 100)}%`;
+        ui.chopVal.textContent = `${Number(ui.chop.value).toFixed(2)}`;
+      }
+
+      ["amp","freq","speed","level","chop"].forEach(id => {
+        ui[id].addEventListener("input", setVals, { passive: true });
+      });
+      setVals();
+
+      // Ripple rács beállítása a vászon méretéhez
+      function initRipple() {
+        const cell = clamp(Math.floor(12 * dpr), 8, 22);
+        state.cols = Math.floor(W / cell);
+        state.rows = Math.floor(H / cell);
+        const n = state.cols * state.rows;
+        state.z1 = new Float32Array(n);
+        state.z2 = new Float32Array(n);
+      }
+      initRipple();
+
+      function resetAll() {
+        state.t = 0;
+        state.paused = false;
+        state.storm = false;
+        ui.state.textContent = "fut";
+        ui.btnPause.innerHTML = `<span aria-hidden="true">⏯</span> Szünet`;
+        ui.btnStorm.classList.remove("primary");
+        initRipple();
+      }
+
+      ui.btnReset.addEventListener("click", resetAll);
+
+      ui.btnPause.addEventListener("click", () => {
+        state.paused = !state.paused;
+        ui.state.textContent = state.paused ? "szünet" : "fut";
+        ui.btnPause.innerHTML = state.paused
+          ? `<span aria-hidden="true">▶️</span> Folytat`
+          : `<span aria-hidden="true">⏯</span> Szünet`;
+      });
+
+      ui.btnStorm.addEventListener("click", () => {
+        state.storm = !state.storm;
+        ui.btnStorm.classList.toggle("primary", state.storm);
+        toast(state.storm ? "Vihar mód: ON" : "Vihar mód: OFF");
+      });
+
+      ui.btnScreenshot.addEventListener("click", () => {
+        try {
+          const a = document.createElement("a");
+          a.download = `sea-sim-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.png`;
+          a.href = canvas.toDataURL("image/png");
+          a.click();
+          toast("Kép mentve");
+        } catch (e) {
+          toast("Mentés nem sikerült");
+        }
+      });
+
+      // Keyboard
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") { e.preventDefault(); ui.btnPause.click(); }
+        if (e.key.toLowerCase() === "s") ui.btnStorm.click();
+        if (e.key.toLowerCase() === "r") ui.btnReset.click();
+        if (e.key.toLowerCase() === "p") ui.btnScreenshot.click();
+      });
+
+      // Pointer interakció: "bedobás" a ripple mezőbe
+      function pointerPos(ev) {
+        const r = canvas.getBoundingClientRect();
+        const x = (ev.clientX - r.left) / r.width;
+        const y = (ev.clientY - r.top) / r.height;
+        return { x: clamp(x, 0, 1), y: clamp(y, 0, 1) };
+      }
+
+      function disturb(nx, ny, force) {
+        if (!state.z1) return;
+        const cx = Math.floor(nx * (state.cols - 1));
+        const cy = Math.floor(ny * (state.rows - 1));
+        const rad = clamp(Math.floor(3 + 5 * force), 2, 9);
+
+        for (let j = -rad; j <= rad; j++) {
+          for (let i = -rad; i <= rad; i++) {
+            const x = cx + i, y = cy + j;
+            if (x < 1 || y < 1 || x >= state.cols - 1 || y >= state.rows - 1) continue;
+            const d = Math.hypot(i, j) / rad;
+            const k = Math.max(0, 1 - d);
+            const idx = y * state.cols + x;
+            state.z1[idx] += k * (40 + 120 * force) * dpr;
+          }
+        }
+      }
+
+      canvas.addEventListener("pointerdown", (ev) => {
+        canvas.setPointerCapture(ev.pointerId);
+        state.pointerDown = true;
+        const p = pointerPos(ev);
+        state.lastPointer = p;
+        disturb(p.x, p.y, 0.7);
+      });
+
+      canvas.addEventListener("pointermove", (ev) => {
+        if (!state.pointerDown) return;
+        const p = pointerPos(ev);
+        if (!state.lastPointer) state.lastPointer = p;
+        const dx = p.x - state.lastPointer.x;
+        const dy = p.y - state.lastPointer.y;
+        const v = clamp(Math.hypot(dx, dy) * 35, 0, 1);
+        disturb(p.x, p.y, v);
+        state.lastPointer = p;
+      }, { passive: true });
+
+      canvas.addEventListener("pointerup", () => {
+        state.pointerDown = false;
+        state.lastPointer = null;
+      });
+
+      canvas.addEventListener("pointercancel", () => {
+        state.pointerDown = false;
+        state.lastPointer = null;
+      });
+
+      // Toast
+      let toastTimer = null;
+      function toast(msg) {
+        ui.toast.textContent = msg;
+        ui.toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => ui.toast.classList.remove("show"), 1200);
+      }
+
+      // Egyszerű, gyors érték zaj
+      function hash(n) {
+        n = (n << 13) ^ n;
+        return 1.0 - ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0;
+      }
+      function noise1D(x) {
+        const xi = Math.floor(x);
+        const xf = x - xi;
+        const a = hash(xi);
+        const b = hash(xi + 1);
+        const t = xf * xf * (3 - 2 * xf);
+        return lerp(a, b, t);
+      }
+
+      // Ripple szimuláció: 2D hullám egy rácson
+      function stepRipple() {
+        const cols = state.cols, rows = state.rows;
+        const z1 = state.z1, z2 = state.z2;
+        if (!z1 || !z2) return;
+
+        // Damping finomhangolás, viharban kevésbé csillapítunk
+        const baseD = state.storm ? 0.992 : 0.985;
+        state.damping = lerp(state.damping, baseD, 0.03);
+
+        for (let y = 1; y < rows - 1; y++) {
+          for (let x = 1; x < cols - 1; x++) {
+            const i = y * cols + x;
+            const sum =
+              z1[i - 1] + z1[i + 1] +
+              z1[i - cols] + z1[i + cols];
+
+            const v = (sum * 0.5 - z2[i]);
+            z2[i] = v * state.damping;
+          }
+        }
+
+        // swap
+        state.z1 = z2;
+        state.z2 = z1;
+      }
+
+      // Többrétegű hullámok
+      function waveHeight(nx, ny, t, amp, freq, speed, chop) {
+        // Base swell
+        const a1 = amp * 0.75;
+        const a2 = amp * 0.45;
+        const a3 = amp * 0.25;
+
+        const f1 = 0.85 * freq;
+        const f2 = 1.35 * freq;
+        const f3 = 2.05 * freq;
+
+        const s = speed;
+
+        const angle1 = 1.05;
+        const angle2 = 2.25;
+        const angle3 = 0.35;
+
+        const x1 = nx * Math.cos(angle1) + ny * Math.sin(angle1);
+        const x2 = nx * Math.cos(angle2) + ny * Math.sin(angle2);
+        const x3 = nx * Math.cos(angle3) + ny * Math.sin(angle3);
+
+        let h =
+          Math.sin((x1 * 6.2) * f1 + t * 1.25 * s) * a1 +
+          Math.sin((x2 * 9.6) * f2 + t * 1.85 * s) * a2 +
+          Math.sin((x3 * 15.2) * f3 + t * 2.40 * s) * a3;
+
+        // Chop, enyhe zajosítás
+        const n = noise1D(nx * 30 + t * 0.65) * 0.6 + noise1D(ny * 28 + t * 0.62) * 0.4;
+        h += (n * amp * 0.35) * chop;
+
+        return h;
+      }
+
+      function sampleRipple(nx, ny) {
+        const cols = state.cols, rows = state.rows;
+        const x = clamp(Math.floor(nx * (cols - 1)), 0, cols - 1);
+        const y = clamp(Math.floor(ny * (rows - 1)), 0, rows - 1);
+        const i = y * cols + x;
+        return state.z1 ? state.z1[i] : 0;
+      }
+
+      function draw() {
+        const t = state.t;
+
+        // háttér
+        ctx.clearRect(0, 0, W, H);
+
+        // Víz szint
+        const level = Number(ui.level.value);
+        const horizonY = Math.floor(H * level);
+
+        // Ég és távol
+        {
+          const g = ctx.createLinearGradient(0, 0, 0, horizonY);
+          g.addColorStop(0, "rgba(80, 160, 255, 0.18)");
+          g.addColorStop(0.55, "rgba(10, 20, 45, 0.10)");
+          g.addColorStop(1, "rgba(0, 0, 0, 0.00)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, horizonY);
+        }
+
+        // Napfény csík a vízen
+        const sunX = W * (0.58 + 0.06 * Math.sin(t * 0.12));
+        {
+          const g = ctx.createRadialGradient(sunX, horizonY - 20 * dpr, 1, sunX, horizonY + 180 * dpr, 520 * dpr);
+          g.addColorStop(0, "rgba(255,255,255,0.22)");
+          g.addColorStop(0.25, "rgba(122,201,255,0.10)");
+          g.addColorStop(0.55, "rgba(86,255,224,0.05)");
+          g.addColorStop(1, "rgba(0,0,0,0.00)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, horizonY - 60 * dpr, W, H - horizonY + 60 * dpr);
+        }
+
+        // Víz forma: több rétegű görbe, hab és fény
+        const amp = Number(ui.amp.value) * dpr;
+        const freq = Number(ui.freq.value);
+        const speed = Number(ui.speed.value);
+        const chop = Number(ui.chop.value);
+
+        // vihar: erősítés
+        const stormK = state.storm ? 1.65 : 1.0;
+        const amp2 = amp * stormK;
+        const chop2 = clamp(chop * (state.storm ? 1.6 : 1.0), 0, 1);
+
+        // Víz töltés
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(0, H);
+        ctx.lineTo(0, horizonY);
+
+        const steps = Math.floor(220 * (qualityScale));
+        for (let i = 0; i <= steps; i++) {
+          const x = (i / steps) * W;
+          const nx = x / W;
+
+          const swell = waveHeight(nx, level, t, amp2, freq, speed, chop2);
+
+          // Ripple hozzáadása
+          const r = sampleRipple(nx, level);
+          const y = horizonY + swell + r * 0.42;
+
+          ctx.lineTo(x, y);
+        }
+
+        ctx.lineTo(W, horizonY);
+        ctx.lineTo(W, H);
+        ctx.closePath();
+
+        const waterG = ctx.createLinearGradient(0, horizonY - 40 * dpr, 0, H);
+        waterG.addColorStop(0, "rgba(14, 86, 140, 0.78)");
+        waterG.addColorStop(0.25, "rgba(10, 62, 112, 0.84)");
+        waterG.addColorStop(0.62, "rgba(6, 36, 70, 0.90)");
+        waterG.addColorStop(1, "rgba(4, 16, 36, 0.98)");
+        ctx.fillStyle = waterG;
+        ctx.fill();
+
+        // Fénycsíkok
+        ctx.globalCompositeOperation = "screen";
+        ctx.lineWidth = 1.35 * dpr;
+
+        for (let k = 0; k < 5; k++) {
+          const bandY = horizonY + (k * 0.12 + 0.08) * (H - horizonY);
+          const bandA = 0.10 - k * 0.015;
+          const g = ctx.createLinearGradient(0, bandY - 80 * dpr, 0, bandY + 80 * dpr);
+          g.addColorStop(0, "rgba(255,255,255,0)");
+          g.addColorStop(0.5, `rgba(122,201,255,${bandA})`);
+          g.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.strokeStyle = g;
+
+          ctx.beginPath();
+          const jitter = 0.008 + k * 0.002;
+          for (let i = 0; i <= steps; i++) {
+            const x = (i / steps) * W;
+            const nx = x / W;
+            const wobble = waveHeight(nx, bandY / H, t + k * 7.0, amp2 * 0.20, freq * 1.4, speed * 0.9, chop2);
+            const y = bandY + wobble * 0.35 + (noise1D(nx * 40 + t * 1.4 + k * 12) * jitter - jitter * 0.5) * 60 * dpr;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+
+        // Hab a felszínen
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineWidth = 2.1 * dpr;
+
+        const foamSteps = Math.floor(260 * qualityScale);
+        ctx.beginPath();
+        for (let i = 0; i <= foamSteps; i++) {
+          const x = (i / foamSteps) * W;
+          const nx = x / W;
+          const swell = waveHeight(nx, level, t, amp2, freq, speed, chop2);
+          const r = sampleRipple(nx, level);
+          const y = horizonY + swell + r * 0.42;
+
+          // apró hab-zaj
+          const n = noise1D(nx * 95 + t * 2.2);
+          const hf = (n > 0.25 ? (n - 0.25) : 0) * (8 * dpr) * (0.8 + chop2);
+          const yy = y - hf;
+
+          if (i === 0) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
+        }
+        const foamG = ctx.createLinearGradient(0, horizonY - 30 * dpr, 0, horizonY + 80 * dpr);
+        foamG.addColorStop(0, "rgba(255,255,255,0.15)");
+        foamG.addColorStop(0.4, "rgba(122,201,255,0.10)");
+        foamG.addColorStop(1, "rgba(86,255,224,0.02)");
+        ctx.strokeStyle = foamG;
+        ctx.stroke();
+
+        // apró részecskék, tenger csillanások
+        const sparkCount = Math.floor(70 * qualityScale);
+        for (let i = 0; i < sparkCount; i++) {
+          const nx = (i / sparkCount + (t * 0.003 * speed)) % 1;
+          const yk = 0.08 + (i % 9) * 0.095;
+          const y = horizonY + yk * (H - horizonY);
+          const x = nx * W;
+
+          const gate = noise1D(nx * 140 + t * 1.15 + i * 10);
+          if (gate < 0.35) continue;
+
+          const a = (gate - 0.35) * 0.25;
+          const size = (0.8 + gate * 1.6) * dpr;
+
+          ctx.fillStyle = `rgba(255,255,255,${a})`;
+          ctx.fillRect(x, y + Math.sin(t * 1.1 + i) * (2.0 * dpr), size, size);
+        }
+
+        ctx.restore();
+        ctx.globalCompositeOperation = "source-over";
+
+        // Finom vignetta
+        {
+          const g = ctx.createRadialGradient(W * 0.5, H * 0.55, Math.min(W, H) * 0.15, W * 0.5, H * 0.55, Math.max(W, H) * 0.75);
+          g.addColorStop(0, "rgba(0,0,0,0)");
+          g.addColorStop(1, "rgba(0,0,0,0.45)");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, W, H);
+        }
+      }
+
+      // FPS mérés
+      let last = performance.now();
+      let acc = 0, frames = 0, fps = 0;
+
+      function tick(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+
+        // FPS
+        acc += dt;
+        frames += 1;
+        if (acc >= 0.5) {
+          fps = Math.round(frames / acc);
+          ui.fps.textContent = String(fps);
+          acc = 0; frames = 0;
+        }
+
+        // Animáció idő
+        if (!state.paused) {
+          const speed = Number(ui.speed.value);
+          const storm = state.storm ? 1.35 : 1.0;
+          state.t += dt * 2.2 * speed * storm;
+
+          // Viharban időnként random bedobás
+          if (state.storm) {
+            const p = (Math.sin(state.t * 0.9) + 1) * 0.5;
+            if (p > 0.985 && Math.random() < 0.35) {
+              disturb(Math.random(), Number(ui.level.value) + (Math.random() - 0.5) * 0.08, 0.9);
+            }
+          }
+
+          stepRipple();
+        }
+
+        draw();
+        requestAnimationFrame(tick);
+      }
+
+      // Újraméretezéskor ripple rács újra
+      const ro = new ResizeObserver(() => {
+        resize();
+        initRipple();
+      });
+      ro.observe(canvas);
+
+      requestAnimationFrame(tick);
+
+      // Első toast
+      setTimeout(() => toast("Kattints a vízre, vagy húzd az egeret"), 600);
+    })();
+  </script>
+</body>
+</html>
